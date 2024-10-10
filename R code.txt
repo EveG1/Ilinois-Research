@@ -1,0 +1,260 @@
+#install.packages('foreign')
+library(foreign)
+data <- read.spss(file.choose(), to.data.frame=TRUE) 
+head(data)
+data<-na.omit(data)
+str(data)
+data$wealth<-as.numeric(as.character(data$wealth))
+data$educ<-as.numeric(as.character(data$educ))
+data$age<-as.numeric(as.character(data$age))
+data <- data %>% select(-id) 
+str(data)
+
+#install.packages('psych')
+library(tidyverse)
+library(psych)
+library(gplots)
+
+num<-data[,sapply(data,class)=="numeric"]
+fac<-data[,sapply(data,class)=="factor"]
+
+
+#gia posotikes
+describe(num) #skweness(0 sumetrikh, >0 thetikh asumetria, <0 arnhtikh asumetria)#kurtosis:(gia kanonikh-mesokurth=0, platikurth <0, leptrokurth>0)
+#paratiro pos kamia den teinei stin kanonikotita
+shapiro.test(num$age) #gia tin kanonikotita ton posotikon
+shapiro.test(num$educ)
+shapiro.test(num$wealth)
+#or
+apply(num,2,function(x)shapiro.test(x))
+
+#otan exoume megalo deigma basizomaste sta diagrammata giati ta test einai evaisthita
+#teinoun na aporriptoun akomi ki an einai kanonika
+
+
+par(mfrow=c(1,3))
+apply(num,2,function(x)qqnorm(x))
+
+
+par(mfrow=c(1,3))
+hist(num$age,probability = T,col=rainbow(10, alpha=0.1)[8], main='Histogram of Age')
+hist(num$educ,probability = T,col=rainbow(10, alpha=0.1)[8], main='Histogram of Educ')
+hist(num$wealth,probability = T,col=rainbow(10, alpha=0.1)[8], main='Histogram of Wealth')
+
+#gia katigorikes
+
+install.packages('tableone')
+library(tableone)
+table<-CreateTableOne(data=fac)
+summary(table)
+
+
+par(mfrow=c(2,2))
+barplot(table(fac$marital),cex.lab=0.7, las=2,main = "Marital",col=rainbow(10, alpha=0.1)[8],cex.names = 0.8)
+barplot(table(fac$sex),cex.lab=0.7, las=2,main = 'Sex',col=rainbow(10, alpha=0.1)[8],cex.names = 0.8)
+barplot(table(fac$health),cex.lab=0.7, las=2,main='Health',col=rainbow(10, alpha=0.1)[8],cex.names = 0.8)
+barplot(table(fac$zodiac),cex.lab=0.7, las=2, main='Zodiac',col=rainbow(10, alpha=0.1)[8],cex.names = 0.8)
+
+
+#arxika erxomai na do tin sisxetisi ton posotikon metabliton 
+#afou oi posotikes den akolouthoun tin kanonikotita tha efarmoso mi parametriko elegxo gia tin sisxetisi
+
+cor(num,method = 'spearman') #blepo sisxetisi metaksi wealth kai educ 
+#gia to grammiko montelo den blepoyme sisxetisi ara den anisixo gia polisigrammikotita
+
+#theoro statistika simantiko ,logo tou provlimatos, na ertho kai na analiso tin sxesi ana 2 sta parakato
+#wealth-marital
+#wealth-sex
+#wealth-health
+#wealth-zodiac
+
+
+#1
+#kanoume ton elegxo anova gia isous mesous 
+
+anova1<- aov( data$wealth~data$marital, data=data)
+summary( anova1) 
+#elegxos twn proupothesewn
+##Normality of the residuals
+shapiro.test(anova1$residuals)
+qqnorm(anova1$res)
+qqline(anova1$res) #den isxoii i kanonikotita
+#eno exo deigma n>50 efarmozo mi parametriko elegxo kryskal wallis logo iparksis akraion timon kathos se akraies times o mesos einai eyaisthitos
+
+kruskal.test(data$wealth~data$marital, data=data) #i ho aporr.#oi diamesoi diaferoyn kai erxomai me wilcox test na sygkrino
+pairwise.wilcox.test(data$wealth,data$marital)
+pairwise.wilcox.test(data$wealth,data$marital,p.adjust.method = "bonferroni")
+boxplot(data$wealth ~ data$marital)
+#i diamesos pou diaferei einai auti gia to married .poy simainei oti oi pantremenoi exoun diaforetiko meso deikti ploutou apo tous ipoloipous
+
+
+
+#2
+#to sex exei 2 epipeda ara kano t-test/wilcox .
+
+by(data$wealth,data$sex,function(x)shapiro.test(x))
+#Den exo kanonikotita kai logo akraion timon tha efarmoso elegxo diameson
+wilcox.test(data$wealth~data$sex) #den aporripto ho kai ara oi diamesoi einai isoi
+boxplot(data$wealth~data$sex)
+#ara o mesos deiktis ploutou gia toys andres den diaferei apo ton meso deikti ploutou gia tis ginaikes
+
+#3
+
+anova3<- aov( data$wealth~data$health, data=data)
+summary( anova3) 
+#elegxos twn proupothesewn
+##Normality of the residuals
+shapiro.test(anova3$residuals)
+qqnorm(anova3$res)
+qqline(anova3$res)
+#den isxoii i kanonikotita
+#logo akraion timon efarmozo mi parametriko elegxo kryskal wallis
+kruskal.test(data$wealth~data$health, data=data) #aporripto ho.Ara oi diamesoi diaferoun
+pairwise.wilcox.test(data$wealth,data$health)
+pairwise.wilcox.test(data$wealth,data$health,p.adjust.method = "bonferroni")
+boxplot(data$wealth ~ data$health)
+
+#4
+
+anova4<- aov( data$wealth~data$zodiac, data=data)
+summary( anova4) 
+#elegxos twn proupothesewn
+##Normality of the residuals
+shapiro.test(anova4$residuals)
+qqnorm(anova4$res)
+qqline(anova4$res)
+#den isxoii i kanonikotita
+#logo akraion timon efarmozo elegxo diameson meson
+kruskal.test(data$wealth~data$zodiac,data=data) #den aporripto ho
+boxplot(data$wealth ~ data$zodiac)
+#ara o mesos deiktis ploutou den diaferei apo zodio se zodio.
+
+
+#erotimata
+
+#erotima 1
+#to sex exei 2 epipeda ara kano t.test/wilcox 
+
+by(data$educ,data$sex,function(x)shapiro.test(x)) #aporr i kanonikotita
+wilcox.test(data$educ~data$sex,data=data) #aporr i ho #ara oi diamesoi diaferoun
+boxplot(data$educ ~ data$sex)
+#ara kata meso oro diaferei i ilikia oloklirosis spoydon sta 2 fila
+
+
+#erotima 2
+#sxesi educ,zodiac
+
+anova6<-aov(educ~zodiac,data=data)
+summary(anova6)
+shapiro.test(anova6$residuals)#aporripto kanonikotita 
+qqnorm(anova6$res)
+qqline(anova6$res)
+#logo akraion timon efarmozo elegxo diameson 
+kruskal.test(educ~zodiac,data=data) #den aporr i ho #ara oi diamesoi den diaferoun
+boxplot(data$educ ~ data$zodiac)
+#ara simperenoume oti kata meso oro i ilikia oloklirosis spoudon den diaferi se atoma diaforetikou zodiou 
+
+###################################################################################################################################################################
+
+#erotima 3
+#grammiko_montelo
+
+m <- lm(wealth~.,data=data)
+anova(m) #paratiroume oti statistika simantikes einai oi marital,educ,age
+#ara sex,health kai zodiac prepei na fugoun. 
+
+#kanoume omos kai step gia epivevaiwsi.
+
+best_model <- step(m,direction="both",trace=F)
+summary(best_model)
+
+#Ara marital, age kai educ einai oi telikes metavlites. 
+
+#i R dimiourgei automata psevdometavlites gia tis katigorikes.
+#stin marital exei dimiourgisei 4.
+#1 an windowed, 0 alliws
+#1 an divorced, 0 alliws
+#1 an separated, 0 alliws
+#1 an never married, 0 alliws
+
+#to proto epipedo pou einai to married isxyei gia windowed=divorced=separated=never married = 0
+
+#episis to oti i widowed den einai simantiki den simainei oti prepei na tin vgalo apo to modelo. 
+
+anova(best_model)
+
+#kentropoiosi
+age.centered <- data$age  - mean(data$age)
+educ.centered <- data$educ - mean(data$educ)
+best_model1<-lm(wealth~marital+ age.centered+ educ.centered, data=data) 
+summary(best_model1)
+
+
+#diagnostiki elegxoi #diagrammata
+par(mfrow=c(2,2))
+plot(best_model1)      
+
+
+#kanonikotita
+shapiro.test(rstandard(best_model1))
+#omoskedastikotita
+quantcut <- function(x, digits=6){ cut( x, breaks=quantile(x),  include.lowest=TRUE, dig.lab = digits) }
+qfits <- quantcut( best_model1$fit )
+library(car)
+leveneTest(rstandard(best_model1), qfits)
+#omoskedastikotita 
+plot( best_model1$fit, rstandard(best_model1))
+abline( h=-1.96)
+abline( h=1.96 )
+#tixaiotita
+dwt(best_model1)
+plot( rstandard(best_model1), type='l' )
+
+
+#influential Points
+plot(best_model1,which=4)
+abline(h=4/(nrow(data)-2-1),col='red',lty=2)
+#Influential Points
+plot(best_model1,which=5)
+plot(best_model1,which=6)
+
+#########################################################################################################################################################
+
+#real model
+realm<-lm(wealth~age.centered*marital+educ.centered*marital,data = data)
+anova(realm)
+best_model2 <- step(realm,direction="both",trace=F)
+summary(best_model2)
+
+anova(best_model1,best_model2)
+AIC(best_model1,best_model2) #paratiroume oti to real model einai kalitero
+
+#diagnostiki elegxoi #diagrammata
+par(mfrow=c(2,2))
+plot(best_model2)      
+
+
+#elegxoi
+#kanonikotita
+shapiro.test(rstandard(best_model2))
+#omoskedastikotita
+quantcut <- function(x, digits=6){ cut( x, breaks=quantile(x),  include.lowest=TRUE, dig.lab = digits) }
+qfits <- quantcut( best_model2$fit )
+library(car)
+leveneTest(rstandard(best_model2), qfits)
+#omoskedastikotita kai grammikotita
+plot( best_model2$fit, rstandard(best_model2))
+abline( h=-1.96)
+abline( h=1.96 )
+#tixaiotita
+dwt(best_model2)
+plot( rstandard(best_model2), type='l' )
+
+
+
+#influential Points
+plot(best_model2,which=4)
+abline(h=4/(nrow(data)-2-1),col='red',lty=2)
+#Influential Points
+plot(best_model2,which=5)
+plot(best_model2,which=6)
